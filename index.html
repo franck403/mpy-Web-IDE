@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Web Serial IDE</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.7/src-min-noconflict/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.7/src-min-noconflict/mode-python.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.7/src-min-noconflict/theme-one_dark.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      eruda.init();
+      eruda.position({ x: 20, y: 20 });
+    </script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div id="workspace">
+      <div id="files"></div>
+      <div id="editor"></div>
+    </div>
+
+    <div id="terminal"></div>
+
+    <div id="actions">
+      <button id="save">Save</button>
+      <button id="run">Run</button>
+      <button id="connect">Connect</button>
+    </div>
+
+    <div id="statusbar">Disconnected</div>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>

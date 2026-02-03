@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/lib/xterm.min.js"></script>
+    <meta charset="utf-8" />
+    <title>ESP32 BLE Terminal</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"
+    />
+    <style>
+      body {
+        background: #0e0e0e;
+        color: #fff;
+        font-family: monospace;
+        margin: 0;
+        padding: 10px;
+      }
+      #terminal {
+        height: 90vh;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="terminal"></div>
+
+    <script>
+      const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
+      const CMD_UUID = '12345678-1234-5678-1234-56789abcdef1';
+      const STATE_UUID = '12345678-1234-5678-1234-56789abcdef2';
+
+      let device, server, cmdChar, stateChar;
+      let currentLine = '';
+
+      const term = new Terminal({ cols: 80, rows: 24, cursorBlink: true });
+      term.open(document.getElementById('terminal'));
+      term.write('ESP32 BLE Terminal\r\n');
+      term.write('Press ENTER to connect to ESP32...\r\n');
+
+      term.onData(async (data) => {
+        if (data === '\r') {
+          if (!device || !server || !cmdChar) {
+            await connect();
+            currentLine = '';
+            term.write('\r\n> ');
+            return;
+          }
+
+          if (currentLine.trim() !== '') {
+            term.write('\r\n> ' + currentLine + '\r\n');
+            await send(currentLine);
+          } else {
+            term.write('\r\n> ');
+          }
+          currentLine = '';
+        } else if (data === '\u007F') {
+          // Backspace
+          if (currentLine.length > 0) {
+            currentLine = currentLine.slice(0, -1);
+            term.write('\b \b');
+          }
+        } else {
+          currentLine += data;
+          term.write(data);
+        }
+      });
+
+      async function connect() {
+        try {
+          device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: 'ESP32' }],
+            optionalServices: [SERVICE_UUID],
+          });
+
+          device.addEventListener('gattserverdisconnected', () => {
+            term.write('\r\n[DISCONNECTED]\r\n> ');
+          });
+
+          server = await device.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          cmdChar = await service.getCharacteristic(CMD_UUID);
+          stateChar = await service.getCharacteristic(STATE_UUID);
+
+          await stateChar.startNotifications();
+          stateChar.addEventListener('characteristicvaluechanged', onData);
+
+          term.write('[CONNECTED]\r\n> ');
+        } catch (err) {
+          term.write('[CONNECTION FAILED] ' + err + '\r\n> ');
+        }
+      }
+
+      function onData(e) {
+        const data = new TextDecoder().decode(e.target.value);
+        // prepend each line with >> for response
+        data.split(/\r?\n/).forEach((line) => {
+          if (line.trim() !== '') term.write('>> ' + line + '\r\n');
+        });
+        term.write('> '); // keep prompt at the end
+      }
+
+      async function send(text) {
+        if (!cmdChar) return;
+        await cmdChar.writeValue(new TextEncoder().encode(text));
+      }
+
+      term.write('> ');
+    </script>
+  </body>
+</html>
